@@ -8,7 +8,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 userwall:
-    image: userwall
+    image: gnoss/userwall
     env_file: .env
     environment:
      virtuosoConnectionString: ${virtuosoConnectionString}
