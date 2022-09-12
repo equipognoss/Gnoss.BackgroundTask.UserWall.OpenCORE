@@ -12,7 +12,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 userwall:
-    image: gnoss/userwall
+    image: gnoss/gnoss.backgroundtask.userwall.opencore
     env_file: .env
     environment:
      virtuosoConnectionString: ${virtuosoConnectionString}
