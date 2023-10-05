@@ -147,7 +147,9 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 RedisCacheWrapper redisCacheWrapper = scope.ServiceProvider.GetRequiredService<RedisCacheWrapper>();
                 LoggingService loggingService = scope.ServiceProvider.GetRequiredService<LoggingService>();
                 VirtuosoAD virtuosoAD = scope.ServiceProvider.GetRequiredService<VirtuosoAD>();
+                ConfigService configService = scope.ServiceProvider.GetRequiredService<ConfigService>();
                 IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication = scope.ServiceProvider.GetRequiredService<IServicesUtilVirtuosoAndReplication>();
+                ComprobarTraza("UserWall", entityContext, loggingService, redisCacheWrapper, configService, servicesUtilVirtuosoAndReplication);
                 try
                 {
                     ComprobarCancelacionHilo();
@@ -164,8 +166,6 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
                         filaCola = null;
 
-                        servicesUtilVirtuosoAndReplication.ConexionAfinidad = "";
-
                         ControladorConexiones.CerrarConexiones(false);
                     }
                     return true;
@@ -174,6 +174,10 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 {
                     loggingService.GuardarLogError(ex);
                     return true;
+                }
+                finally
+                {
+                    GuardarTraza(loggingService);
                 }
             }
         }        
@@ -407,7 +411,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 bool privacidadCambiada = pFilaCola.Accion == (int)AccionLive.Editado && pFilaCola.InfoExtra.Contains(Constantes.PRIVACIDAD_CAMBIADA);
 
                 ParametroAplicacion parametroAplicacion = GestorParametroAplicacionDS.ParametroAplicacion.Find(parametroApp=>parametroApp.Parametro.Equals("EcosistemaSinHomeUsuario"));
-                if (parametroAplicacion == null || parametroAplicacion.Valor == "false")
+                if (parametroAplicacion != null && parametroAplicacion.Valor == "false")
                 {
                     AgregarEventoLiveRecurso(pFilaCola, liveUsuariosCL, nombreCacheElemento, perfilPublicadorID, esComunidadPrivada, recursoPrivado, privacidadCambiada, entityContext, loggingService, servicesUtilVirtuosoAndReplication);
                 }
