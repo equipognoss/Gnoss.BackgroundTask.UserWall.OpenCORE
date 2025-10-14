@@ -42,6 +42,8 @@ using Es.Riam.Gnoss.AD.Virtuoso;
 using Es.Riam.Gnoss.AD.EntityModelBASE;
 using Es.Riam.Gnoss.AD.BASE_BD;
 using Es.Riam.AbstractsOpen;
+using Microsoft.Extensions.Logging;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 
 namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 {
@@ -68,6 +70,8 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         private Guid mElementoID;
 
         private int mMinutosEntrePintadoAgrupacionNuevosRegistros;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
         #endregion
 
@@ -77,10 +81,12 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         /// Constructor
         /// </summary>
         /// <param name="pFicheroConfiguracionSitioWeb">Ruta al archivo de configuración del sitio Web</param>
-        public ControladorLiveUsuariosEspecifico(int pMinutosPintarAgrupacionNuevosRegistros, IServiceScopeFactory scopedFactory, ConfigService configService)
-            : base(scopedFactory, configService)
+        public ControladorLiveUsuariosEspecifico(int pMinutosPintarAgrupacionNuevosRegistros, IServiceScopeFactory scopedFactory, ConfigService configService, ILogger<ControladorLiveUsuariosEspecifico> logger, ILoggerFactory loggerFactory)
+            : base(scopedFactory, configService,logger,loggerFactory)
         {
             mMinutosEntrePintadoAgrupacionNuevosRegistros = pMinutosPintarAgrupacionNuevosRegistros;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         #endregion
@@ -94,7 +100,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             {
                 try
                 {
-                    ParametroAplicacionCN parametroApliCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                    ParametroAplicacionCN parametroApliCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ParametroAplicacionCN>(), mLoggerFactory);
                     GestorParametroAplicacion gestorParametroAplicacion = new GestorParametroAplicacion();
                     ParametroAplicacionGBD parametroAplicacionGBD = new ParametroAplicacionGBD(loggingService, entityContext, mConfigService);
                     parametroAplicacionGBD.ObtenerConfiguracionGnoss(gestorParametroAplicacion);
@@ -111,7 +117,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 }
                 catch (Exception ex)
                 {
-                    loggingService.GuardarLog(loggingService.DevolverCadenaError(ex, "1.0"));
+                    loggingService.GuardarLog(loggingService.DevolverCadenaError(ex, "1.0"),mlogger);
                     Thread.Sleep(1000);
                 }
             }
@@ -124,7 +130,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 RabbitMQClient.ReceivedDelegate funcionProcesarItem = new RabbitMQClient.ReceivedDelegate(ProcesarItem);
                 RabbitMQClient.ShutDownDelegate funcionShutDown = new RabbitMQClient.ShutDownDelegate(OnShutDown);
 
-                RabbitMQClient rabbitMQClient = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_USUARIOS_ESPECIFICO, loggingService, mConfigService, EXCHANGE, COLA_USUARIOS_ESPECIFICO);
+                RabbitMQClient rabbitMQClient = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_USUARIOS_ESPECIFICO, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, EXCHANGE, COLA_USUARIOS_ESPECIFICO);
 
                 try
                 {
@@ -134,7 +140,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 catch (Exception ex)
                 {
                     mReiniciarLecturaRabbit = true;
-                    loggingService.GuardarLogError(ex);
+                    loggingService.GuardarLogError(ex,mlogger);
                 }
             }
         }
@@ -172,7 +178,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 }
                 catch (Exception ex)
                 {
-                    loggingService.GuardarLogError(ex);
+                    loggingService.GuardarLogError(ex,mlogger);
                     return true;
                 }
                 finally
@@ -192,7 +198,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             }
             catch (Exception e)
             {
-                loggingService.GuardarLogError(e);
+                loggingService.GuardarLogError(e,mlogger);
             }
         }
 
@@ -212,14 +218,14 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             }
             catch (Exception ex)
             {
-                loggingService.GuardarLog(loggingService.DevolverCadenaError(ex, "1.0"));
+                loggingService.GuardarLog(loggingService.DevolverCadenaError(ex, "1.0"),mlogger);
             }
         }
 
 
         private List<Guid> ObtenerProyectosQueAgrupanEventosRegistroHome(EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            ParametroCN paramCN = new ParametroCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ParametroCN paramCN = new ParametroCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ParametroCN>(), mLoggerFactory);
             List<Guid> listaProyectosConfigurados = paramCN.ObtenerProyectosQueAgrupanEventosRegistroHome();
 
             return listaProyectosConfigurados;
@@ -332,7 +338,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
         private void ProcesarFila(LiveUsuariosDS.ColaUsuariosRow pFilaCola, EntityContext entityContext, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            ProyectoCN proyCN = new ProyectoCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ProyectoCN proyCN = new ProyectoCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ProyectoCN>(), mLoggerFactory);
             EstadoProyecto estado = proyCN.ObtenerEstadoProyecto(pFilaCola.ProyectoId);
             TipoAcceso tipoAcceso = proyCN.ObtenerTipoAccesoProyecto(pFilaCola.ProyectoId);
 
@@ -346,8 +352,8 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             parametroAplicacionGBD.ObtenerConfiguracionGnoss(GestorParametroAplicacionDS);
             mUrlIntragnoss = GestorParametroAplicacionDS.ParametroAplicacion.Where(parametroAplicacion => parametroAplicacion.Parametro.Equals("UrlIntragnoss")).FirstOrDefault().Valor;
             //GestorParametroAplicacionDS.ParametroAplicacion.Select("Parametro = 'UrlIntragnoss'")[0]["Valor"].ToString()
-            FacetadoCL facetadoCL = new FacetadoCL(mFicheroConfiguracionBD, mFicheroConfiguracionBD, mUrlIntragnoss, entityContext, loggingService, redisCacheWrapper, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication);
-            DocumentacionCL documentacionCL = new DocumentacionCL(mFicheroConfiguracionBD, mFicheroConfiguracionBD, entityContext, loggingService, redisCacheWrapper, mConfigService, servicesUtilVirtuosoAndReplication);
+            FacetadoCL facetadoCL = new FacetadoCL(mFicheroConfiguracionBD, mFicheroConfiguracionBD, mUrlIntragnoss, entityContext, loggingService, redisCacheWrapper, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoCL>(), mLoggerFactory);
+            DocumentacionCL documentacionCL = new DocumentacionCL(mFicheroConfiguracionBD, mFicheroConfiguracionBD, entityContext, loggingService, redisCacheWrapper, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCL>(), mLoggerFactory);
             documentacionCL.Dominio = mDominio;
 
             ObtenerIDElementoPrincipal(pFilaCola, entityContext, loggingService, servicesUtilVirtuosoAndReplication);
@@ -382,7 +388,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 nombreCacheElemento = pFilaCola.Tipo + "_" + pFilaCola.ProyectoId;
             }
 
-            LiveUsuariosCL liveUsuariosCL = new LiveUsuariosCL(entityContext, loggingService, redisCacheWrapper, mConfigService, servicesUtilVirtuosoAndReplication);
+            LiveUsuariosCL liveUsuariosCL = new LiveUsuariosCL(entityContext, loggingService, redisCacheWrapper, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<LiveUsuariosCL>(), mLoggerFactory);
             liveUsuariosCL.Dominio = mDominio;
 
             bool esComunidadPrivada = tipoAcceso.Equals(TipoAcceso.Privado) || tipoAcceso.Equals(TipoAcceso.Reservado);
@@ -392,7 +398,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
             if (esTipoDocumento)
             {
-                DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
                 bool borrador = docCN.EsDocumentoBorrador(mElementoID);
 
                 if (borrador)
@@ -441,14 +447,14 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         {
             AccionLive accion = (AccionLive)pFilaCola.Accion;
 
-            ProyectoCN proyCN = new ProyectoCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ProyectoCN proyCN = new ProyectoCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ProyectoCN>(), mLoggerFactory);
             TipoAcceso tipoAcceso = proyCN.ObtenerTipoAccesoProyecto(pFilaCola.ProyectoId);
             bool esPublica = (tipoAcceso.Equals(TipoAcceso.Publico) || tipoAcceso.Equals(TipoAcceso.Restringido));
             proyCN.Dispose();
 
             if ((accion.Equals(AccionLive.Agregado)) && !pFilaCola.ProyectoId.Equals(ProyectoAD.MetaProyecto) && !pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoFAQ) && !pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoNoticias) && (!pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoDidactalia) || !string.IsNullOrEmpty(pFilaCola.InfoExtra)))
             {
-                UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<UsuarioCN>(), mLoggerFactory);
                 Guid? usuarioMiembroID = usuarioCN.ObtenerUsuarioIDPorIDPerfil(pFilaCola.Id);
                 Guid? perfilMiembroID = null;
 
@@ -479,7 +485,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
             if ((AccionLive)pFilaCola.Accion == AccionLive.Agregado || (AccionLive)pFilaCola.Accion == AccionLive.Editado || (AccionLive)pFilaCola.Accion == AccionLive.Eliminado)
             {
-                IdentidadCN identCN = new IdentidadCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                IdentidadCN identCN = new IdentidadCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<IdentidadCN>(), mLoggerFactory);
                 perfilPublicadorID = identCN.ObtenerPerfilIDPublicadorRecursoEnProyecto(mElementoID, pFilaCola.ProyectoId);
                 identCN.Dispose();
             }
@@ -607,7 +613,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
             if (aumentarContador)
             {
-                LiveCN liveCN = new LiveCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                LiveCN liveCN = new LiveCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<LiveCN>(), mLoggerFactory);
                 liveCN.AumentarContadorNuevasSuscripciones(pPerfilID);
                 liveCN.Dispose();
             }
@@ -616,7 +622,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         private Dictionary<Guid, Guid> ObtenerListaUsuariosSuscritos(LiveUsuariosDS.ColaUsuariosRow pFilaCola, Guid? perfilPublicadorID, bool pObtenerSuscritosMetaProyecto, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             //obtenemos los perfiles suscritos a las categorias del recurso o a los autores del documento
-            SuscripcionCN suscrCN = new SuscripcionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            SuscripcionCN suscrCN = new SuscripcionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<SuscripcionCN>(), mLoggerFactory);
             List<Guid> listaPerfilesSuscritosCategorias = suscrCN.ListaPerfilesSuscritosAAlgunaCategoriaDeDocumento(pFilaCola.Id, pFilaCola.ProyectoId);
             List<Guid> listaPerfilesSuscritosAutor = suscrCN.ListaPerfilesSuscritosAPerfilEnComunidad(perfilPublicadorID.Value, pFilaCola.ProyectoId, pObtenerSuscritosMetaProyecto);
             suscrCN.Dispose();
@@ -631,7 +637,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 listaPerfiles.Remove(perfilPublicadorID.Value);
             }
 
-            UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<UsuarioCN>(), mLoggerFactory);
             Dictionary<Guid, Guid> listaUsuariosYPerfiles = usuarioCN.ObtenerUsuariosIDPorIDPerfil(listaPerfiles);
             usuarioCN.Dispose();
 
@@ -640,7 +646,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
         private Dictionary<Guid, Guid> ObtenerListaUsuariosAfectados(LiveUsuariosDS.ColaUsuariosRow pFilaCola, Guid? perfilPublicadorID, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication, bool esComunidadPrivada = false, bool pRecursoPrivado = false, bool pPrivacidadCambiada = false)
         {
-            UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<UsuarioCN>(), mLoggerFactory);
 
             Dictionary<Guid, List<Guid>> listaUsuariosAfectadosPorEvento = new Dictionary<Guid, List<Guid>>();
             Dictionary<Guid, List<Guid>> listaGruposAfectadosPorEvento = new Dictionary<Guid, List<Guid>>();
@@ -730,7 +736,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 case TipoLive.Recurso:
                 case TipoLive.Pregunta:
                 case TipoLive.Debate:
-                    DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                    DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
 
                     switch (accion)
                     {
@@ -801,7 +807,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
         protected override ControladorServicioGnoss ClonarControlador()
         {
-            return new ControladorLiveUsuariosEspecifico(mMinutosEntrePintadoAgrupacionNuevosRegistros, ScopedFactory, mConfigService);
+            return new ControladorLiveUsuariosEspecifico(mMinutosEntrePintadoAgrupacionNuevosRegistros, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<ControladorLiveUsuariosEspecifico>(), mLoggerFactory);
         }
     }
 }

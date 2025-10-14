@@ -1,3 +1,4 @@
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 using Es.Riam.Gnoss.Servicios;
 using Es.Riam.Gnoss.Util.Configuracion;
 using Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico;
@@ -14,14 +15,16 @@ namespace Gnoss.BackgroundTask.UserWall
 {
     public class UserWallWorker : Worker
     {
-        private readonly ILogger<UserWallWorker> _logger;
         private readonly ConfigService _configService;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
-        public UserWallWorker(ILogger<UserWallWorker> logger, ConfigService configService, IServiceScopeFactory scopeFactory)
+        public UserWallWorker(ConfigService configService, IServiceScopeFactory scopeFactory, ILogger<UserWallWorker> logger, ILoggerFactory loggerFactory)
             : base(logger, scopeFactory)
         {
-            _logger = logger;
             _configService = configService;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         protected override List<ControladorServicioGnoss> ObtenerControladores()
@@ -31,7 +34,7 @@ namespace Gnoss.BackgroundTask.UserWall
 
             int minPintarAgrupacionUsuariosEnProyecto = _configService.ObtenerMinutosAgruparRegistrosUsuariosEnProyecto();
 
-            controladores.Add(new ControladorLiveUsuariosEspecifico(minPintarAgrupacionUsuariosEnProyecto, ScopedFactory, _configService));
+            controladores.Add(new ControladorLiveUsuariosEspecifico(minPintarAgrupacionUsuariosEnProyecto, ScopedFactory, _configService, mLoggerFactory.CreateLogger<ControladorLiveUsuariosEspecifico>(), mLoggerFactory));
             return controladores;
         }
     }
