@@ -1,49 +1,50 @@
-using System;
-using System.Web;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
-using System.IO;
-using System.Globalization;
-using System.Reflection;
-using System.Data;
-using Es.Riam.Util;
-using System.Xml;
-using Es.Riam.Gnoss.Util.General;
-using System.Net;
-using Es.Riam.Gnoss.Logica.Live;
-using Es.Riam.Gnoss.AD.Live.Model;
+using Es.Riam.AbstractsOpen;
+using Es.Riam.Gnoss.AD.BASE_BD;
+using Es.Riam.Gnoss.AD.EntityModel;
+using Es.Riam.Gnoss.AD.EntityModelBASE;
 using Es.Riam.Gnoss.AD.Live;
-using Es.Riam.Gnoss.Logica.Identidad;
-using Es.Riam.Gnoss.Logica.Usuarios;
+using Es.Riam.Gnoss.AD.Live.Model;
+using Es.Riam.Gnoss.AD.ServiciosGenerales;
+using Es.Riam.Gnoss.AD.Virtuoso;
+using Es.Riam.Gnoss.CL;
+using Es.Riam.Gnoss.CL.Documentacion;
+using Es.Riam.Gnoss.CL.Facetado;
 //using Es.Riam.Gnoss.CL.Identidad;
 using Es.Riam.Gnoss.CL.Live;
-using System.ServiceModel;
-using Es.Riam.Gnoss.Logica.ParametroAplicacion;
-using Es.Riam.Gnoss.Recursos;
-using Es.Riam.Gnoss.Logica.Documentacion;
-using Es.Riam.Gnoss.Logica.ServiciosGenerales;
-using Es.Riam.Gnoss.AD.ServiciosGenerales;
-using Es.Riam.Gnoss.Servicios;
-using Es.Riam.Gnoss.CL.Facetado;
-using Es.Riam.Gnoss.Logica.Suscripcion;
-using Es.Riam.Gnoss.CL.Documentacion;
-using Es.Riam.Gnoss.CL;
-using Es.Riam.Gnoss.Logica.Parametro;
-using System.Linq;
 using Es.Riam.Gnoss.Elementos.ParametroAplicacion;
-using Es.Riam.Gnoss.Web.Controles.ParametroAplicacionGBD;
-using Es.Riam.Gnoss.AD.EntityModel;
-using Es.Riam.Gnoss.RabbitMQ;
-using Newtonsoft.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Es.Riam.Gnoss.Util.Configuracion;
-using Es.Riam.Gnoss.AD.Virtuoso;
-using Es.Riam.Gnoss.AD.EntityModelBASE;
-using Es.Riam.Gnoss.AD.BASE_BD;
-using Es.Riam.AbstractsOpen;
-using Microsoft.Extensions.Logging;
 using Es.Riam.Gnoss.Elementos.Suscripcion;
+using Es.Riam.Gnoss.Logica.Documentacion;
+using Es.Riam.Gnoss.Logica.Flujos;
+using Es.Riam.Gnoss.Logica.Identidad;
+using Es.Riam.Gnoss.Logica.Live;
+using Es.Riam.Gnoss.Logica.Parametro;
+using Es.Riam.Gnoss.Logica.ParametroAplicacion;
+using Es.Riam.Gnoss.Logica.ServiciosGenerales;
+using Es.Riam.Gnoss.Logica.Suscripcion;
+using Es.Riam.Gnoss.Logica.Usuarios;
+using Es.Riam.Gnoss.RabbitMQ;
+using Es.Riam.Gnoss.Recursos;
+using Es.Riam.Gnoss.Servicios;
+using Es.Riam.Gnoss.Util.Configuracion;
+using Es.Riam.Gnoss.Util.General;
+using Es.Riam.Gnoss.Web.Controles.ParametroAplicacionGBD;
+using Es.Riam.Util;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Reflection;
+using System.ServiceModel;
+using System.Text;
+using System.Threading;
+using System.Web;
+using System.Xml;
 
 namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 {
@@ -382,6 +383,10 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             {
                 nombreCacheElemento += infoExtra;
             }
+            else
+            {
+                nombreCacheElemento += "_";
+            }
 
             if (pFilaCola.Tipo.Equals((int)TipoLive.AgrupacionNuevosMiembros))
             {
@@ -399,6 +404,8 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             if (esTipoDocumento)
             {
                 DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
+                FlujosCN flujosCN = new FlujosCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FlujosCN>(), mLoggerFactory);
+
                 bool borrador = docCN.EsDocumentoBorrador(mElementoID);
 
                 if (borrador)
@@ -412,7 +419,14 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
                 //Obtenemos la privacidad del recurso
                 bool recursoPrivado = docCN.EsDocumentoEnProyectoPrivadoEditores(mElementoID, pFilaCola.ProyectoId);
+                // Si esta afectado por un flujo comprobamos si su estado actual es privado
+                Guid? estadoID = docCN.ObtenerEstadoIDDeDocumento(mElementoID);
+                if (estadoID.HasValue)
+                {
+                    recursoPrivado = !flujosCN.ComprobarEstadoEsPublico(estadoID.Value);
+                }
                 docCN.Dispose();
+                flujosCN.Dispose();
 
                 bool privacidadCambiada = pFilaCola.Accion == (int)AccionLive.Editado && pFilaCola.InfoExtra.Contains(Constantes.PRIVACIDAD_CAMBIADA);
 
@@ -647,6 +661,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         private Dictionary<Guid, Guid> ObtenerListaUsuariosAfectados(LiveUsuariosDS.ColaUsuariosRow pFilaCola, Guid? perfilPublicadorID, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication, bool esComunidadPrivada = false, bool pRecursoPrivado = false, bool pPrivacidadCambiada = false)
         {
             UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<UsuarioCN>(), mLoggerFactory);
+            DocumentacionCN documentacionCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
 
             Dictionary<Guid, List<Guid>> listaUsuariosAfectadosPorEvento = new Dictionary<Guid, List<Guid>>();
             Dictionary<Guid, List<Guid>> listaGruposAfectadosPorEvento = new Dictionary<Guid, List<Guid>>();
@@ -655,15 +670,26 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             Dictionary<Guid, List<Guid>> listaUsuariosEliminarAfectadosPorEvento = new Dictionary<Guid, List<Guid>>();
             Dictionary<Guid, List<Guid>> listaGruposEliminarAfectadosPorEvento = new Dictionary<Guid, List<Guid>>();
 
+            // Comprobamos si el recurso tiene asignado un estado
+            Guid? estadoID = documentacionCN.ObtenerEstadoIDDeDocumento(pFilaCola.Id);
+
             // Si el recurso es privado, cargamos solamente los editores y lectores
             // Si se hace un cambio de privacidad, se cargan todos, para quitar la fila a los que no son editores ni lectores.
             if (pRecursoPrivado && !pPrivacidadCambiada)
             {
-                // Obtenemos los usuarios y los perfiles editores y lectores del recurso
-                usuarioCN.ObtenerUsuarioIDEditoresLectoresRecurso(mElementoID, listaUsuariosAfectadosPorEvento);
+                if(estadoID.HasValue)
+                {
+                    usuarioCN.ObtenerUsuarioIDEditoresLectoresRecursoPorEstado(estadoID.Value, listaUsuariosAfectadosPorEvento);
+                    listaGruposAfectadosPorEvento = usuarioCN.ObtenerDiccionarioGruposYPerfilesPorProyectoYEstado(estadoID.Value, pFilaCola.ProyectoId);
+                }
+                else
+                {
+                    // Obtenemos los usuarios y los perfiles editores y lectores del recurso
+                    usuarioCN.ObtenerUsuarioIDEditoresLectoresRecurso(mElementoID, listaUsuariosAfectadosPorEvento);
 
-                // Obtenemos los grupos de editores del recurso
-                listaGruposAfectadosPorEvento = usuarioCN.ObtenerDiccionarioGruposYPerfilesPorProyectoYDocPrivado(pFilaCola.ProyectoId, mElementoID);
+                    // Obtenemos los grupos de editores del recurso
+                    listaGruposAfectadosPorEvento = usuarioCN.ObtenerDiccionarioGruposYPerfilesPorProyectoYDocPrivado(pFilaCola.ProyectoId, mElementoID);
+                }
             }
             else
             {
@@ -679,11 +705,19 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 // Si el recurso se ha cambiado a privado debemos quitar los editores de la lista
                 if (pRecursoPrivado && pPrivacidadCambiada)
                 {
-                    // Obtenemos los usuarios y los perfiles editores y lectores del recurso
-                    usuarioCN.ObtenerUsuarioIDEditoresLectoresRecurso(mElementoID, listaUsuariosEliminarAfectadosPorEvento);
+                    if (estadoID.HasValue)
+                    {
+                        usuarioCN.ObtenerUsuarioIDEditoresLectoresRecursoPorEstado(estadoID.Value, listaUsuariosEliminarAfectadosPorEvento);
+                        listaGruposEliminarAfectadosPorEvento = usuarioCN.ObtenerDiccionarioGruposYPerfilesPorProyectoYEstado(estadoID.Value, pFilaCola.ProyectoId);
+                    }
+                    else
+                    {
+                        // Obtenemos los usuarios y los perfiles editores y lectores del recurso
+                        usuarioCN.ObtenerUsuarioIDEditoresLectoresRecurso(mElementoID, listaUsuariosEliminarAfectadosPorEvento);
 
-                    // Obtenemos los grupos de editores del recurso
-                    listaGruposEliminarAfectadosPorEvento = usuarioCN.ObtenerDiccionarioGruposYPerfilesPorProyectoYDocPrivado(pFilaCola.ProyectoId, mElementoID);
+                        // Obtenemos los grupos de editores del recurso
+                        listaGruposEliminarAfectadosPorEvento = usuarioCN.ObtenerDiccionarioGruposYPerfilesPorProyectoYDocPrivado(pFilaCola.ProyectoId, mElementoID);
+                    }
                 }
             }
 
