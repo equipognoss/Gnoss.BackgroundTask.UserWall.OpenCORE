@@ -466,7 +466,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             bool esPublica = (tipoAcceso.Equals(TipoAcceso.Publico) || tipoAcceso.Equals(TipoAcceso.Restringido));
             proyCN.Dispose();
 
-            if ((accion.Equals(AccionLive.Agregado)) && !pFilaCola.ProyectoId.Equals(ProyectoAD.MetaProyecto) && !pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoFAQ) && !pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoNoticias) && (!pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoDidactalia) || !string.IsNullOrEmpty(pFilaCola.InfoExtra)))
+            if ((accion.Equals(AccionLive.Agregado)) && !pFilaCola.ProyectoId.Equals(ProyectoAD.MetaProyecto) && !pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoFAQ) && !pFilaCola.ProyectoId.Equals(ProyectoAD.ProyectoNoticias))
             {
                 UsuarioCN usuarioCN = new UsuarioCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<UsuarioCN>(), mLoggerFactory);
                 Guid? usuarioMiembroID = usuarioCN.ObtenerUsuarioIDPorIDPerfil(pFilaCola.Id);
