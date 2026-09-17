@@ -60,7 +60,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         #region Miembros
 
         /// <summary>
-        /// Almacena el último Score que se ha asginado a cada perfil de usuario
+        /// Almacena el ï¿½ltimo Score que se ha asginado a cada perfil de usuario
         /// </summary>
         private Dictionary<Guid, int> mListaScorePorPerfil = new Dictionary<Guid, int>();
 
@@ -73,6 +73,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         private int mMinutosEntrePintadoAgrupacionNuevosRegistros;
         private ILogger mlogger;
         private ILoggerFactory mLoggerFactory;
+        private RabbitMQClient mRabbitMQClient;
 
         #endregion
 
@@ -81,7 +82,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="pFicheroConfiguracionSitioWeb">Ruta al archivo de configuración del sitio Web</param>
+        /// <param name="pFicheroConfiguracionSitioWeb">Ruta al archivo de configuraciï¿½n del sitio Web</param>
         public ControladorLiveUsuariosEspecifico(int pMinutosPintarAgrupacionNuevosRegistros, IServiceScopeFactory scopedFactory, ConfigService configService, ILogger<ControladorLiveUsuariosEspecifico> logger, ILoggerFactory loggerFactory)
             : base(scopedFactory, configService,logger,loggerFactory)
         {
@@ -92,7 +93,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
         #endregion
 
-        #region Métodos generales
+        #region Mï¿½todos generales
 
         private void EstablecerDominioCache(EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
@@ -131,11 +132,12 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
                 RabbitMQClient.ReceivedDelegate funcionProcesarItem = new RabbitMQClient.ReceivedDelegate(ProcesarItem);
                 RabbitMQClient.ShutDownDelegate funcionShutDown = new RabbitMQClient.ShutDownDelegate(OnShutDown);
 
-                RabbitMQClient rabbitMQClient = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_USUARIOS_ESPECIFICO, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, EXCHANGE, COLA_USUARIOS_ESPECIFICO);
+                mRabbitMQClient?.Dispose();
+                mRabbitMQClient = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_USUARIOS_ESPECIFICO, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, EXCHANGE, COLA_USUARIOS_ESPECIFICO);
 
                 try
                 {
-                    rabbitMQClient.ObtenerElementosDeCola(funcionProcesarItem, funcionShutDown);
+                    mRabbitMQClient.ObtenerElementosDeCola(funcionProcesarItem, funcionShutDown);
                     mReiniciarLecturaRabbit = false;
                 }
                 catch (Exception ex)
@@ -203,7 +205,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
             }
         }
 
-        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             try
             {
@@ -345,7 +347,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
             if (estado != EstadoProyecto.Abierto)
             {
-                //Si el proyecto no está abierto no notifico nada
+                //Si el proyecto no estï¿½ abierto no notifico nada
                 return;
             }
             GestorParametroAplicacionDS = new GestorParametroAplicacion();
@@ -474,7 +476,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
 
                 if (esPublica && !((TipoLive)pFilaCola.Tipo).Equals(TipoLive.AgrupacionNuevosMiembros))
                 {
-                    // A mis contactos solo se notifican las acciones de comunidades de acceso restringido y públicas
+                    // A mis contactos solo se notifican las acciones de comunidades de acceso restringido y pï¿½blicas
                     perfilMiembroID = pFilaCola.Id;
                 }
 
@@ -787,7 +789,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         }
 
         /// <summary>
-        /// Obtiene el último Score que se asigno a un perfil
+        /// Obtiene el ï¿½ltimo Score que se asigno a un perfil
         /// </summary>
         /// <param name="pPerfilID"></param>
         /// <returns></returns>
@@ -802,7 +804,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         }
 
         /// <summary>
-        /// Obtiene el último Score que se asigno a un usuario de proyecto
+        /// Obtiene el ï¿½ltimo Score que se asigno a un usuario de proyecto
         /// </summary>
         /// <param name="pProyectoID"></param>
         /// <param name="pUsuarioID"></param>
@@ -820,7 +822,7 @@ namespace Es.Riam.Gnoss.Win.ServicioLiveUsuariosEspecifico
         }
 
         /// <summary>
-        /// Obtiene el último Score que se asigno a un usuario de proyecto
+        /// Obtiene el ï¿½ltimo Score que se asigno a un usuario de proyecto
         /// </summary>
         /// <param name="pProyectoID"></param>
         /// <param name="pUsuarioID"></param>
